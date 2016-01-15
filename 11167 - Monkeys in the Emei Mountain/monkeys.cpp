@@ -15,7 +15,6 @@ vector<vector<int>> residue;
 vector<vector<int>> adjList;
 vector<int> interval;
 vector<pair<int, ii>> monkeys;
-vector<ii> theEnds;
 
 int goal;
 int max_flow, flow, s, t, V;
@@ -27,19 +26,7 @@ void buildGraph(){
     auto it = unique(interval.begin(), interval.end());
     interval.erase(it, interval.end());
 
-    vector<int> image(interval.size());
-    theEnds.clear();
-    counter = 0;
-    for (int i = 0; i < interval.size(); i++){
-        if (i != 0){
-            if (interval[i] - 1 > interval[i - 1]){
-                theEnds.push_back({interval[i - 1] + 1, interval[i] - 1});
-                counter++;
-            }
-        }
-        theEnds.push_back({interval[i], interval[i]});
-        image[i] = counter++;
-    }
+    counter = interval.size() - 1;
 
     residue.assign(2 + n + counter, vector<int>(2 + n + counter, 0));
     adjList.assign(2 + n + counter, vector<int>());
@@ -48,25 +35,20 @@ void buildGraph(){
         adjList[0].push_back(i + 1);
         adjList[i + 1].push_back(0);
         residue[0][i + 1] = monkeys[i].first;
-        int lower = image[lower_bound(interval.begin(), interval.end(), monkeys[i].second.first) - interval.begin()],
-            upper = image[lower_bound(interval.begin(), interval.end(), monkeys[i].second.second) - interval.begin()];
+        int lower = lower_bound(interval.begin(), interval.end(), monkeys[i].second.first) - interval.begin(),
+            upper = lower_bound(interval.begin(), interval.end(), monkeys[i].second.second) - interval.begin();
         
-        for (int j = lower; j <= upper; j++){
+        for (int j = lower; j < upper; j++){
             adjList[i + 1].push_back(j + n + 1);
             adjList[j + n + 1].push_back(i + 1);
-            residue[i + 1][j + n + 1] = theEnds[j].second - theEnds[j].first + 1;
+            residue[i + 1][j + n + 1] = interval[j + 1] - interval[j];
         }
     }
 
-    for (int i = 0; i < interval.size(); i++){
-        if (i != 0 && interval[i] - 1 > interval[i - 1]){
-            adjList[n + 1 + image[i - 1] + 1].push_back(1 + n + counter);
-            adjList[1 + n + counter].push_back(n + 1 + image[i - 1] + 1);
-            residue[n + 1 + image[i - 1] + 1][1 + n + counter] = (interval[i] - interval[i - 1] - 1) * m;
-        }
-        adjList[n + 1 + image[i]].push_back(1 + n + counter);
-        adjList[1 + n + counter].push_back(n + 1 + image[i]);
-        residue[n + 1 + image[i]][1 + n + counter] = m;
+    for (int i = 0; i < counter; i++){
+        adjList[n + 1 + i].push_back(1 + n + counter);
+        adjList[1 + n + counter].push_back(n + 1 + i);
+        residue[n + 1 + i][1 + n + counter] = (interval[i + 1] - interval[i]) * m;
     }
     s = 0, t = 1 + n + counter, V = 2 + n + counter;
 }
@@ -107,6 +89,8 @@ void Dinic(){
 
         int new_flow = 0;
         for (int u : adjList[t]){
+            if (residue[u][t] <= 0)
+                continue;
             flow = 0;
             augment(u, residue[u][t]);
             residue[u][t] -= flow;
@@ -129,7 +113,6 @@ int main(){
         interval.clear();
         for (int i = 0; i < n; i++){
             scanf("%d %d %d", &monkeys[i].first, &monkeys[i].second.first, &monkeys[i].second.second); 
-            monkeys[i].second.second--;
             interval.push_back(monkeys[i].second.first);
             interval.push_back(monkeys[i].second.second);
             goal += monkeys[i].first;
@@ -139,24 +122,33 @@ int main(){
         printf("Case %d: ", test_case);
         if (max_flow == goal){
             printf("Yes\n");
-            vector<int> remain(interval.back() + 1, m);
+            vector<priority_queue<pair<int, int>>> remain(counter);
+            for (int i = 0; i < counter; i++)
+                for (int j = interval[i]; j < interval[i + 1]; j++)
+                    remain[i].push({m, j});
 
             for (int i = 0; i < n; i++){
                 vector<bool> drink(interval.back() + 1, false);
                 vector<ii> answer;
                 int to_drink;
-                for (int j = 0; j < counter; j++)
+                int sum = 0;
+                for (int j = 0; j < counter; j++){
                     if (residue[1 + n + j][1 + i] > 0){
                         to_drink = residue[1 + n + j][1 + i];
-                        int lower = theEnds[j].first, upper = theEnds[j].second;
-                        for (int k = lower; to_drink > 0 && k <= upper; k++)
-                            if (remain[k] > 0){
-                                remain[k]--;
-                                drink[k] = true;
-                                to_drink--;
-                            }
-                                
+                        int lower = interval[j], upper = interval[j + 1];
+                        while (to_drink > 0){
+                            auto front = remain[j].top();
+                            remain[j].pop();
+                            if (drink[front.second])
+                                continue;
+                            to_drink--;
+                            front.first--;
+                            drink[front.second] = true;
+                            remain[j].push(front);
+                        }
                     }
+                }
+                
                 int lower = -1, upper = -1;
                 for (int j = 0; j < drink.size(); j++)
                     if (drink[j]){
@@ -181,4 +173,5 @@ int main(){
         else
             printf("No\n");
     }
+    return 0;
 }

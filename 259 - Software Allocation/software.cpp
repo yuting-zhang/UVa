@@ -84,11 +84,19 @@ int main(){
                     }
                 }
             }
-            flow = 0;
-            augment(t, (1 << 29));
-            if (flow == 0)
+            int new_flow = 0;
+            for (int u: adjList[t]){
+                if (residue[u][t] <= 0)
+                    continue;
+                flow = 0;
+                augment(u, residue[u][t]);
+                residue[u][t] -= flow;
+                residue[t][u] += flow;
+                new_flow += flow;
+            }
+            if (new_flow == 0)
                 break;
-            max_flow += flow;
+            max_flow += new_flow;
         }
         if (max_flow != intended)
             printf("!\n");
