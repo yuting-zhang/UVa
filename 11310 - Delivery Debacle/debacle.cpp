@@ -4,7 +4,7 @@
 using namespace std;
 
 int main() {
-    vector<long long> box = {1, 1};
+    vector<long long> box = {1, 1, 5};
     int t;
     scanf("%d", &t);
     while (t--) {
@@ -16,7 +16,7 @@ int main() {
         }
 
         while (box.size() <= n) {
-            box.push_back(box.back() + 4 * box[box.size() - 2]);
+            box.push_back(box.back() + 4 * box[box.size() - 2] + 2 * box[box.size() - 3]);
         }
         printf("%lld\n", box[n]);
     }
